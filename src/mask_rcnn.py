@@ -7,7 +7,7 @@ import tensorflow as tf
 from keras.models import Model
 from keras.engine.topology import Input
 from keras.layers.wrappers import TimeDistributed
-from keras.layers.core import Dense, Flatten, Activation, Reshape
+from keras.layers.core import Activation
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.normalization import BatchNormalization
 from keras.optimizers import SGD
@@ -18,6 +18,7 @@ from subnetwork.faster_rcnn.src.faster_rcnn import FasterRCNN, TrainTarget, RoIP
 from subnetwork.faster_rcnn.src.faster_rcnn import ClassLoss, RegionLoss
 from layer.detection_target_region_mask import DetectionTargetRegionMask
 from layer.mask_loss import MaskLoss
+from layer.squeeze_target import SqueezeTarget
 from layer.pick_target_mask import PickTaretMask
 
 class MaskRCNN():
@@ -38,7 +39,7 @@ class MaskRCNN():
 
         _, backbone = faster_rcnn.get_backbone_network()
         inputs, rpn = faster_rcnn.get_rpn_network()
-        _, _, rpn_prop_regs = rpn
+        rpn_cls_probs, rpn_regions, rpn_prop_regs = rpn
         outputs = []
         if train_rpn and not is_predict:
             inputs, outputs = faster_rcnn.get_rpn_loss_network()
@@ -71,11 +72,12 @@ class MaskRCNN():
             classes, offsets = faster_rcnn.head_net(backbone, rpn_prop_regs, class_num
                                                     , batch_size=batch_size)
             sqzt = SqueezeTarget()([rpn_prop_regs, classes, offsets])
-            sqzt_, sqzt_, sqzt_, sqzt_ = sqzt
-            masks = self.__mask_net(backbone, , class_num, batch_size=batch_size)
-            target_masks = PickTaretMask()([, masks])
+            sqzt_real_reg, sqzt_reg_pred, sqzt_cls_pred, sqzt_cls_ids = sqzt
+            masks = self.__mask_net(backbone, sqzt_reg_pred, class_num, batch_size=batch_size)
+            target_masks = PickTaretMask()([sqzt_cls_pred, masks])
 
-            outputs += [rpn_prop_regs, classes, offsets, target_masks]
+            outputs += [sqzt_real_reg, sqzt_cls_pred, sqzt_cls_ids, target_masks
+                        , sqzt_reg_pred, rpn_regions, rpn_cls_probs]
 
         self.__network = (inputs, outputs)
         self.__model = Model(inputs=inputs, outputs=outputs)
@@ -138,5 +140,8 @@ class MaskRCNN():
 
 
     def draw_model_summary(self, file_name='model.png'):
+        """
+        TODO : Write description
+        draw_model_summary
+        """
         plot_model(self.__model, to_file=file_name)
-
