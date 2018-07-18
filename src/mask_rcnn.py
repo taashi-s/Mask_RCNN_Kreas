@@ -28,7 +28,7 @@ class MaskRCNN():
     """
 
     def __init__(self, input_shape, class_num, anchors
-                 , batch_size=5, mask_size=14
+                 , batch_size=5, mask_size=14, roi_pool_size=(14, 14)
                  , is_predict=False, train_taegets=None):
         self.__input_shape = input_shape
         train_head = TrainTarget.HEAD in train_taegets
@@ -71,9 +71,13 @@ class MaskRCNN():
         if is_predict:
             classes, offsets = faster_rcnn.head_net(backbone, rpn_prop_regs, class_num
                                                     , batch_size=batch_size)
-            sqzt = SqueezeTarget()([rpn_prop_regs, classes, offsets])
+            sqzt = SqueezeTarget(batch_size=5, image_shape=self.__input_shape
+                                 , squeeze_threshold=0.7, max_pred_count=50, nms_threshold=0.3
+                                 , refinement_std_dev=None
+                                )([rpn_prop_regs, classes, offsets])
             sqzt_real_reg, sqzt_reg_pred, sqzt_cls_pred, sqzt_cls_ids = sqzt
-            masks = self.__mask_net(backbone, sqzt_reg_pred, class_num, batch_size=batch_size)
+            masks = self.__mask_net(backbone, sqzt_reg_pred, class_num
+                                    , batch_size=batch_size, roi_pool_size=roi_pool_size)
             target_masks = PickTaretMask()([sqzt_cls_pred, masks])
 
             outputs += [sqzt_real_reg, sqzt_cls_pred, sqzt_cls_ids, target_masks
@@ -86,13 +90,13 @@ class MaskRCNN():
             self.__model.add_loss(tf.reduce_mean(output))
 
 
-    def __mask_net(self, fmaps, regions, class_num, batch_size=5):
+    def __mask_net(self, fmaps, regions, class_num, batch_size=5, roi_pool_size=(14, 14)):
         """
         for backbone is ResNet/FPN
         """
-        # TODO : change kernel for 14 * 14, stride=2
-        roi_pool = RoIPooling(image_shape=self.__input_shape
-                              , batch_size=batch_size)([fmaps, regions])
+        roi_pool = RoIPooling(batch_size=batch_size, pooling=roi_pool_size
+                              , image_shape=self.__input_shape
+                             )([fmaps, regions])
 
         conv_layers = roi_pool
         for _ in range(4):
