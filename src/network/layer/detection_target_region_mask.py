@@ -19,7 +19,7 @@ class DetectionTargetRegionMask(KELayer.Layer):
 
     def __init__(self, positive_threshold=0.5, positive_ratio=0.33, image_shape=None
                  , batch_size=5, exclusion_threshold=0.1, count_per_batch=64
-                 , mask_size=14, **kwargs):
+                 , mask_size=28, **kwargs):
         super(DetectionTargetRegionMask, self).__init__(**kwargs)
         self.__th = positive_threshold
         self.__excl_th = exclusion_threshold

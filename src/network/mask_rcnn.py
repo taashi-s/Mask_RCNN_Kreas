@@ -7,19 +7,15 @@ import tensorflow as tf
 from keras.models import Model
 from keras.engine.topology import Input
 from keras.layers.wrappers import TimeDistributed
-from keras.layers.core import Activation
+from keras.layers.core import Activation, Reshape
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.normalization import BatchNormalization
 from keras.optimizers import SGD
 from keras.utils import plot_model
 import keras.utils.conv_utils as KCUtils
 
-from subnetwork.faster_rcnn import FasterRCNN, TrainTarget, RoIPooling
-from subnetwork.faster_rcnn import ClassLoss, RegionLoss
-from layer.detection_target_region_mask import DetectionTargetRegionMask
-from layer.mask_loss import MaskLoss
-from layer.squeeze_target import SqueezeTarget
-from layer.pick_target_mask import PickTaretMask
+from .subnetwork import FasterRCNN, TrainTarget, RoIPooling, ClassLoss, RegionLoss
+from .layer import DetectionTargetRegionMask, MaskLoss, SqueezeTarget, PickTaretMask
 
 class MaskRCNN():
     """
@@ -28,7 +24,7 @@ class MaskRCNN():
     """
 
     def __init__(self, input_shape, class_num, anchors
-                 , batch_size=5, mask_size=14, roi_pool_size=(14, 14)
+                 , batch_size=5, mask_size=28, roi_pool_size=14
                  , is_predict=False, train_taegets=None):
         self.__input_shape = input_shape
         train_head = TrainTarget.HEAD in train_taegets
@@ -49,7 +45,7 @@ class MaskRCNN():
             inputs_cls = Input(shape=[None, 1], dtype='int32')
             inputs_reg = Input(shape=[None, 4], dtype='float32')
             inputs_msk = Input(shape=[None, mask_h, mask_w], dtype='float32')
-            inputs += [inputs_cls, inputs_reg]
+            inputs += [inputs_cls, inputs_reg, inputs_msk]
 
             dtrm = DetectionTargetRegionMask(positive_threshold=0.5, positive_ratio=0.33
                                              , image_shape=self.__input_shape, batch_size=batch_size
@@ -77,7 +73,8 @@ class MaskRCNN():
                                 )([rpn_prop_regs, classes, offsets])
             sqzt_real_reg, sqzt_reg_pred, sqzt_cls_pred, sqzt_cls_ids = sqzt
             masks = self.__mask_net(backbone, sqzt_reg_pred, class_num
-                                    , batch_size=batch_size, roi_pool_size=roi_pool_size)
+                                    , batch_size=batch_size, roi_pool_size=roi_pool_size
+                                    , mask_size=mask_size)
             target_masks = PickTaretMask()([sqzt_cls_pred, masks])
 
             outputs += [sqzt_real_reg, sqzt_cls_pred, sqzt_cls_ids, target_masks
@@ -90,7 +87,7 @@ class MaskRCNN():
             self.__model.add_loss(tf.reduce_mean(output))
 
 
-    def __mask_net(self, fmaps, regions, class_num, batch_size=5, roi_pool_size=(14, 14)):
+    def __mask_net(self, fmaps, regions, class_num, batch_size=5, roi_pool_size=14, mask_size=28):
         """
         for backbone is ResNet/FPN
         """
@@ -105,7 +102,10 @@ class MaskRCNN():
             conv_layers = TimeDistributed(Activation('relu'))(conv_layers)
 
         deconv = TimeDistributed(Conv2DTranspose(256, 2, strides=2, activation='relu'))(conv_layers)
-        masks = TimeDistributed(Conv2D(class_num, 1, 1, activation='sigmoid'))(deconv)
+        fc_conv = TimeDistributed(Conv2D(class_num, 1, activation='sigmoid'))(deconv)
+
+        mask_h, mask_w = KCUtils.normalize_tuple(mask_size, 2, 'mask_size')
+        masks = Reshape((-1, class_num, mask_h, mask_w))(fc_conv)
         return masks
 
 
