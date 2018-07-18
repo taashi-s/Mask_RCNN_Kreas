@@ -14,8 +14,8 @@ from keras.optimizers import SGD
 from keras.utils import plot_model
 import keras.utils.conv_utils as KCUtils
 
-from subnetwork.faster_rcnn.src.faster_rcnn import FasterRCNN, TrainTarget, RoIPooling
-from subnetwork.faster_rcnn.src.faster_rcnn import ClassLoss, RegionLoss
+from subnetwork.faster_rcnn import FasterRCNN, TrainTarget, RoIPooling
+from subnetwork.faster_rcnn import ClassLoss, RegionLoss
 from layer.detection_target_region_mask import DetectionTargetRegionMask
 from layer.mask_loss import MaskLoss
 from layer.squeeze_target import SqueezeTarget
