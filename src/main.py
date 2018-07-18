@@ -2,7 +2,7 @@
 
 import numpy as np
 import os
-from mask_rcnn import MaskRCNN, TrainTarget
+from network.mask_rcnn import MaskRCNN, TrainTarget
 
 INPUT_SHAPE = (512, 512, 3)
 BATCH_SIZE = 256

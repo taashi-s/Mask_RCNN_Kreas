@@ -1,8 +1,6 @@
-
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'faster_rcnn', 'src', 'layers'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from utils import regions_utils
-from utils import non_maximal_suppression
-from utils import loss_utils
+from . import mask_loss_utils
+from subnetwork import utils as subnet_utils
