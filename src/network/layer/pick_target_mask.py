@@ -23,8 +23,11 @@ class PickTaretMask():
 
 
     def __pick_target_mask(self, cls_labels, masks):
-        batch, reg_num, mask_h, mask_w = masks.get_shape()
-
+        mask_shape = KB.shape(masks)
+        batch = mask_shape[0]
+        reg_num = mask_shape[1]
+        mask_h = mask_shape[3]
+        mask_w = mask_shape[4]
         dim1 = KB.flatten(KB.repeat(KB.expand_dims(KB.arange(batch)), reg_num))
         dim2 = KB.tile(KB.arange(reg_num), [batch])
         dim3 = KB.cast(KB.flatten(cls_labels), tf.int32)

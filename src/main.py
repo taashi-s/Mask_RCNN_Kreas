@@ -4,7 +4,7 @@ import numpy as np
 import os
 from network.mask_rcnn import MaskRCNN, TrainTarget
 
-INPUT_SHAPE = (512, 512, 3)
+INPUT_SHAPE = (256, 256, 3)
 BATCH_SIZE = 256
 EPOCHS = 100
 
@@ -21,15 +21,15 @@ def train():
     test_inputs = None
     test_teachers = None
 
-    anchors = get_default_anchors()
     train_taegets=[TrainTarget.BACKBONE, TrainTarget.RPN, TrainTarget.HEAD]
 
-    network = MaskRCNN(INPUT_SHAPE, 2, anchors
-                       #, train_taegets= None, is_predict=True
-                       , train_taegets= train_taegets, is_predict=False
+    network = MaskRCNN(INPUT_SHAPE, 2
+                       , train_taegets= None, is_predict=True
+                       #, train_taegets= train_taegets, is_predict=False
                       )
     model = network.get_model_with_default_compile()
     network.draw_model_summary(file_name=os.path.join(os.pardir, 'ModelLayers.png'))
+    model.summary()
 #    his = model.fit(train_inputs, train_teachers
 #                    , batch_size=BATCH_SIZE
 #                    , epochs=EPOCHS
@@ -40,9 +40,6 @@ def train():
 def predict():
     """ predict """
     print('execute predict')
-
-def get_default_anchors():
-    return np.zeros([60000*9, 4], dtype='int32')
 
 if __name__ == '__main__':
     train()

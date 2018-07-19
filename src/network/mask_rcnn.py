@@ -4,10 +4,11 @@ Faster R-CNN Module
 """
 
 import tensorflow as tf
+import keras.backend as KB
 from keras.models import Model
 from keras.engine.topology import Input
 from keras.layers.wrappers import TimeDistributed
-from keras.layers.core import Activation, Reshape
+from keras.layers.core import Activation, Reshape, Lambda
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.normalization import BatchNormalization
 from keras.optimizers import SGD
@@ -23,17 +24,19 @@ class MaskRCNN():
     Mask R-CNN class
     """
 
-    def __init__(self, input_shape, class_num, anchors
+    def __init__(self, input_shape, class_num, anchors=None
                  , batch_size=5, mask_size=28, roi_pool_size=14
                  , is_predict=False, train_taegets=None):
         self.__input_shape = input_shape
+        if train_taegets is None:
+            train_taegets = []
         train_head = TrainTarget.HEAD in train_taegets
         train_rpn = TrainTarget.RPN in train_taegets
 
         faster_rcnn = FasterRCNN(input_shape, class_num, anchors
                                  , batch_size, is_predict, train_taegets)
 
-        _, backbone = faster_rcnn.get_backbone_network()
+        first_layer, backbone = faster_rcnn.get_backbone_network()
         inputs, rpn = faster_rcnn.get_rpn_network()
         rpn_cls_probs, rpn_regions, rpn_prop_regs = rpn
         outputs = []
@@ -83,8 +86,12 @@ class MaskRCNN():
         self.__network = (inputs, outputs)
         self.__model = Model(inputs=inputs, outputs=outputs)
 
-        for output in outputs:
-            self.__model.add_loss(tf.reduce_mean(output))
+        if not is_predict:
+            for output in outputs:
+                self.__model.add_loss(tf.reduce_mean(output))
+        else:
+            dummy_loss = Lambda(lambda x: KB.constant(0.0))(first_layer)
+            self.__model.add_loss(tf.reduce_mean(dummy_loss))
 
 
     def __mask_net(self, fmaps, regions, class_num, batch_size=5, roi_pool_size=14, mask_size=28):

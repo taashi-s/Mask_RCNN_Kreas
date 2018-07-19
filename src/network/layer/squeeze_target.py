@@ -85,7 +85,7 @@ class SqueezeTarget():
         return gather_data
 
     def __get_positive_class_preds(self, reg_pred, cls_pred, ofs_pred):
-        reg_num, _ = cls_pred.get_shape()
+        reg_num = (cls_pred.get_shape())[0]
 
         max_cls_ids = KB.cast(KB.argmax(cls_pred, axis=-1), 'int32')
         max_ids_2d = KB.cast(KB.stack([KB.arange(reg_num), max_cls_ids], axis=1), 'int32')
@@ -104,15 +104,15 @@ class SqueezeTarget():
 
 
     def __sort_preds_by_class(self, reg_pred, cls_pred, ofs_pred, cls_ids):
-        target_num, _ = cls_pred.get_shape()
-        _, sort_cls_ids = tf.nn.top_k(cls_pred, k=target_num, sorted=True)
+        _, sort_cls_ids = tf.nn.top_k(cls_pred, k=KB.shape(cls_pred)[0], sorted=True)
         return self.__gather_data([reg_pred, cls_pred, ofs_pred, cls_ids], sort_cls_ids)
 
 
     def __get_real_regions(self, reg_pred, ofs_pred):
-        offset_reg = RegionsUtils(reg_pred).offsets(ofs_pred)
+        offset_reg = RegionsUtils(reg_pred).offset(ofs_pred)
         if self.__image_shape is not None:
-            offset_reg = RegionsUtils(offset_reg).denormalize(*self.__image_shape)
+            image_h, image_w, _ = self.__image_shape
+            offset_reg = RegionsUtils(offset_reg).denormalize(image_h, image_w)
         return KB.cast(offset_reg, 'float32')
 
 
@@ -124,7 +124,7 @@ class SqueezeTarget():
 
 
     def __padding_data(self, real_reg, reg_pred, cls_pred, cls_ids):
-        target_count = (real_reg.get_shape())[0]
+        target_count = KB.shape(real_reg)[0]
         padding_count = KB.cast(KB.maximum(self.__max_count - target_count, 0), 'int32')
         padding_shape = [0, padding_count]
         reg_shape = (self.__max_count, 4)
