@@ -1,16 +1,52 @@
-
 import os
+import cv2
+import random
+import warnings
 import numpy as np
-from numpy import random as nprand
-from pycocotools.coco import COCO
 import skimage.io as io
-from PIL import Image
+import scipy.ndimage as scndi
 import matplotlib.pyplot as plot
+from PIL import Image
+from enum import Enum
+from pycocotools.coco import COCO
+
+from utils import rpn_input_data as rpn_data
+from utils.image_utils import ImageUtils
+
+
+class GenerateTarget(Enum):
+    """
+    TODO : Write description
+    Generate Target Enum
+    """
+    RPN_INPUT = 2
+    HEAD_INPUT = 3
+
+
+class COCOData():
+    """
+    COCO Data
+    """
+    def __init__(self, img_id, path, height, width, annotations):
+        self.id = img_id
+        self.path = path
+        self.height = height
+        self.width = width
+        self.annotations = annotations
+
+
+class COCOCategory():
+    """
+    COCO Category
+    """
+    def __init__(self, ctg_id, name):
+        self.id = ctg_id
+        self.name = name
 
 
 class COCODataset():
     """
-    COCODataset Class
+    COCO Dataset Class
     """
     ANNOTATION_DIR = 'annotations'
     ANNOTATION_FILE_PREFIX = 'instances_'
@@ -47,9 +83,7 @@ class COCODataset():
             self.__ctg_ids = self.__coco.getCatIds(catNms=categories)
         self.__categories = []
         for cid in self.__ctg_ids:
-            self.__categories.append({'id' : cid
-                                      , 'name' : self.__coco.loadCats(cid)[0]["name"]
-                                     })
+            self.__categories.append(COCOCategory(cid, self.__coco.loadCats(cid)[0]["name"]))
 
 
     def load_data(self):
@@ -70,15 +104,17 @@ class COCODataset():
         image_path = os.path.join(self.__image_dir, image['file_name'])
         image_h = image['height']
         image_w = image['width']
-        image_ann_ids = self.__coco.getAnnIds(imgIds=[image_id], catIds=self.__ctg_ids)
+        image_ann_ids = self.__coco.getAnnIds(imgIds=[image_id], catIds=self.__ctg_ids
+                                              , iscrowd=False)
         image_anns = self.__coco.loadAnns(image_ann_ids)
-        data = {'id' : image_id
-                , 'path' : image_path
-                , 'height' : image_h
-                , 'width' : image_w
-                , 'annotataions' : image_anns
-               }
-        self.__data_list.append(data)
+        self.__data_list.append(COCOData(image_id, image_path, image_h, image_w, image_anns))
+
+
+    def data_size(self):
+        """
+        data_size
+        """
+        return len(self.__data_list)
 
 
     def get_coco(self):
@@ -87,6 +123,17 @@ class COCODataset():
         """
         return self.__coco
 
+
+    def get_data(self, id):
+        """
+        get_data
+        """
+        if self.data_size() <= id:
+            return None
+
+        return self.__data_list[id]
+
+
     def get_data_list(self):
         """
         get_data_list
@@ -94,38 +141,197 @@ class COCODataset():
         return self.__data_list
 
 
-if __name__ == '__main__':
-    """
-    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)))
-    data_type = 'val2017'
-    annotation_file = '%s/annotations/instances_%s.json'%(data_dir, data_type)
+    def generator(self, anchors, image_shape, max_objects=10, batch_size=None, target_data_list=None, genetate_targets=None):
+        """
+        keras data generator
+        """
+        data_list = self.get_data_list()
+        if target_data_list is not None:
+            data_list = target_data_list
 
-    coco = COCO(annotation_file)
-    categories = coco.loadCats(coco.getCatIds())
-    cat_names = [cat['name'] for cat in categories]
-    # print('COCO categories : \n', cat_names)
+        if batch_size is None:
+            batch_size = self.data_size()
+        if genetate_targets is None:
+            genetate_targets = []
+        include_rpns = GenerateTarget.RPN_INPUT in genetate_targets
+        include_heads = GenerateTarget.HEAD_INPUT in genetate_targets
+        image_list = []
 
-    cat_ids = coco.getCatIds(catNms=['cat'])
-    cat_img_ids = coco.getImgIds(catIds=cat_ids)
-    img_data = coco.loadImgs(cat_img_ids[nprand.randint(0,len(cat_img_ids))])[0]
-    img_path = '%s/images/%s/%s'%(data_dir, data_type, img_data['file_name'])
-    img = io.imread(img_path)
-    io.imshow(img)
-    # img = Image.open(img_path)
-    # img.show()
-    ann_ids = coco.getAnnIds(imgIds=img_data['id'], catIds=cat_ids, iscrowd=None)
-    anns = coco.loadAnns(ann_ids)
-    coco.showAnns(anns)
-    io.show()
-    """
-    dataset = COCODataset(categories=['cat'])
-    data_list = dataset.get_data_list()
-    coco = dataset.get_coco()
+        while True:
+            random.shuffle(data_list)
+            for data in data_list:
+                image_list = []
+                if (image_list == []) or (len(image_list) >= batch_size):
+                    image_list = []
+                    rpn_classes_list = []
+                    rpn_offsets_list = []
+                    classes_list = []
+                    regions_list = []
+                    masks_list = []
 
-    if len(data_list) > 0:
-        img = io.imread(data_list[0]['path'])
+                data_inputs = self.generate_data(data, anchors, image_shape, max_objects
+                                                 , include_rpns, include_heads)
+                img, cls_label, ofs_label, clss, regs, msks = data_inputs
+                img, cls_label, ofs_label, clss, regs, msks
+                if img is None:
+                    continue
+
+                image_list.append(img)
+                rpn_classes_list.append(ofs_label)
+                rpn_offsets_list.append(cls_label)
+                classes_list.append(clss)
+                regions_list.append(regs)
+                masks_list.append(msks)
+
+                if len(image_list) >= batch_size:
+                    inputs = [np.array(image_list)]
+                    outputs = []
+                    if include_rpns:
+                        inputs += [np.array(rpn_offsets_list), np.array(rpn_classes_list)]
+                    if include_heads:
+                        inputs += [np.array(regions_list), np.array(classes_list)]
+                        inputs += [np.array(masks_list)]
+                    yield inputs, outputs
+
+
+    def generate_data(self, data, image_shape, max_objects, anchors
+                      , include_rpn_inputs, include_head_inputs):
+        """
+        generate_data
+        """
+        error_return = None, None, None, None, None, None
+        height, width, channel = image_shape
+        reg_min_cofficent = 1 / 20
+        reg_min_h = height * reg_min_cofficent
+        reg_min_w = width * reg_min_cofficent
+
+        img = io.imread(data.path)
+        if len(img.shape) < channel:
+            return error_return
+
+        resize_data = ImageUtils().resize_with_keeping_aspect(img, height, width)
+        resize_img, scale, padding = resize_data
+
+        clss_tmp = []
+        regs_tmp = []
+        msks_tmp = []
+
+        for annotation in data.annotations:
+            mask = self.__coco.annToMask(annotation)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                mask = scndi.zoom(mask, zoom=[scale, scale], order=0)
+            resize_mask = np.pad(mask, padding, mode='constant')
+
+            posivive_poss = np.where(resize_mask == 1)
+            reg = np.array([np.min(posivive_poss[0]), np.min(posivive_poss[1])
+                            , np.max(posivive_poss[0]), np.max(posivive_poss[1])])
+            if (reg[2] - reg[0]) < reg_min_h or (reg[3] - reg[1]) < reg_min_w:
+                continue
+
+            clss_tmp.append(annotation['category_id'])
+            regs_tmp.append(reg)
+            msks_tmp.append(resize_mask)
+
+        if clss_tmp == []:
+            return error_return
+
+        ofs_label, cls_label = None, None
+        if include_rpn_inputs:
+            ofs_label, cls_label = rpn_data.make_inputs(anchors, np.array(regs_tmp), height, width)
+
+        clss, regs, msks = None, None, None
+        if include_head_inputs:
+            clss = np.zeros([max_objects])
+            regs = np.zeros([max_objects, 4])
+            msks = np.zeros([max_objects, height, width])
+
+            clss[:len(clss_tmp)] = clss_tmp
+            regs[:len(regs_tmp), :] = regs_tmp
+            msks[:len(msks_tmp), :] = msks_tmp
+
+        return resize_img, cls_label, ofs_label, clss, regs, msks
+
+
+    def show_image_with_label(self, image_id, image_shape, anchors, max_objects=10):
+        """
+        show_image_with_label
+        """
+        if self.data_size() < image_id:
+            return False
+        data = self.generate_data(self.__data_list[image_id], image_shape, max_objects, anchors, True, True)
+        self.show_data_image_with_label(data)
+
+    def show_data_image_with_label(self, data):
+        img, _, _, _, regs, msks = data
+
+        img = np.flip(img, axis=2).astype(np.uint8)
+        idx_pos = np.where(np.any(regs, axis=1))[0]
+        regs = regs[idx_pos]
+        msks = msks[idx_pos]
+        c = [i for i in range(255)[::(255 // regs.shape[0] - 1)]]
+        i = 0
+        for reg, mask in zip(regs, msks):
+            reg = reg.astype(np.uint32)
+            mask = mask.astype(np.uint8)
+            color = (c[i], c[::-1][i], 0)
+            cv2.rectangle(img, (reg[1], reg[0]), (reg[3], reg[2]), color, 2)
+            mask = np.dstack([mask, mask, mask])
+            mask[:, :, 0][mask[:, :, 0] == 1] = color[0]
+            mask[:, :, 1][mask[:, :, 1] == 1] = color[1]
+            mask[:, :, 2][mask[:, :, 2] == 1] = color[2]
+            cv2.addWeighted(mask, 1, img, 1, 0, img)
+            i += 1
         io.imshow(img)
-        coco.showAnns(data_list[0]['annotataions'])
         io.show()
 
 
+    def show_data_image(self, id, with_annotations=False):
+        """
+        data_size
+        """
+        if self.data_size() <= id:
+            return False
+
+        data = self.__data_list[id]
+        img = io.imread(data.path)
+        io.imshow(img)
+        if with_annotations:
+            self.__coco.showAnns(data.annotations)
+        io.show()
+        return True
+
+
+if __name__ == '__main__':
+    """
+    """
+    dataset = COCODataset(categories=['cat'])
+    data_len = dataset.data_size()
+    """
+    for i in range(5):
+        n = random.randrange(0, data_len)
+        #dataset.show_data_image(n, with_annotations=True)
+        d = dataset.get_data(n)
+        print('data[%3d] : '%(n), '(', d.width, ', ', d.height, ')')
+    """
+    print('data count : ', data_len)
+    data_list = dataset.get_data_list()
+    print('create anchors ...')
+    INPUT_SHAPE = (512, 512, 3)
+    ACS = rpn_data.get_anchors(INPUT_SHAPE)
+    print('... finish')
+    hs = []
+    ws = []
+    for d in data_list:
+        hs.append(d.height)
+        ws.append(d.width)
+#    print('max h : ', max(hs))
+#    print('max w : ', max(ws))
+    loop = 5
+    if data_len > loop:
+        ddd = []
+        for iii in range(loop):
+            ddd.append(dataset.generate_data(data_list[iii], INPUT_SHAPE, 2, ACS, True, True))
+
+        for iii in range(loop):
+            dataset.show_data_image_with_label(ddd[iii])
