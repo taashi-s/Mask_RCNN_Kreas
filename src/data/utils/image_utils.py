@@ -1,6 +1,7 @@
 """
 image utils Module
 """
+import warnings
 import numpy as np
 import skimage.transform as ski_trans
 
@@ -20,9 +21,10 @@ class ImageUtils():
         scale = self.__get_resize_scale(image, height, width)
         resize_h, resize_w = round(src_h * scale), round(src_w * scale)
         if scale != 1:
-            resize_img = ski_trans.resize(image, (resize_h, resize_w)
-                                          , mode="constant", preserve_range=True)
-
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                resize_img = ski_trans.resize(image, (resize_h, resize_w)
+                                              , mode="constant", preserve_range=True)
 
         top_pad, bottom_pad = self.__split_to_two_int(height - resize_h)
         left_pad, right_pad = self.__split_to_two_int(width - resize_w)

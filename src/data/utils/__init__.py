@@ -29,5 +29,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'
                                                       ))
 
 from .image_utils import ImageUtils
+from .data_utils import DataUtils
 from layers.utils import RegionsUtils
 import rpn_input_data

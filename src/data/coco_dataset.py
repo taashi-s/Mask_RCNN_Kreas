@@ -12,7 +12,7 @@ from pycocotools.coco import COCO
 
 from utils import rpn_input_data as rpn_data
 from utils.image_utils import ImageUtils
-
+from utils.data_utils import DataUtils
 
 class GenerateTarget(Enum):
     """
@@ -219,7 +219,7 @@ class COCODataset():
         for annotation in data.annotations:
             mask = self.__coco.annToMask(annotation)
             with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
+                warnings.simplefilter('ignore')
                 mask = scndi.zoom(mask, zoom=[scale, scale], order=0)
             resize_mask = np.pad(mask, padding, mode='constant')
 
@@ -260,30 +260,8 @@ class COCODataset():
         if self.data_size() < image_id:
             return False
         data = self.generate_data(self.__data_list[image_id], image_shape, max_objects, anchors, True, True)
-        self.show_data_image_with_label(data)
-
-    def show_data_image_with_label(self, data):
-        img, _, _, _, regs, msks = data
-
-        img = np.flip(img, axis=2).astype(np.uint8)
-        idx_pos = np.where(np.any(regs, axis=1))[0]
-        regs = regs[idx_pos]
-        msks = msks[idx_pos]
-        c = [i for i in range(255)[::(255 // regs.shape[0] - 1)]]
-        i = 0
-        for reg, mask in zip(regs, msks):
-            reg = reg.astype(np.uint32)
-            mask = mask.astype(np.uint8)
-            color = (c[i], c[::-1][i], 0)
-            cv2.rectangle(img, (reg[1], reg[0]), (reg[3], reg[2]), color, 2)
-            mask = np.dstack([mask, mask, mask])
-            mask[:, :, 0][mask[:, :, 0] == 1] = color[0]
-            mask[:, :, 1][mask[:, :, 1] == 1] = color[1]
-            mask[:, :, 2][mask[:, :, 2] == 1] = color[2]
-            cv2.addWeighted(mask, 1, img, 1, 0, img)
-            i += 1
-        io.imshow(img)
-        io.show()
+        img, _, _, clss, regs, msks = data
+        DataUtils(img, clss, regs, msks).show()
 
 
     def show_data_image(self, id, with_annotations=False):
@@ -334,4 +312,5 @@ if __name__ == '__main__':
             ddd.append(dataset.generate_data(data_list[iii], INPUT_SHAPE, 2, ACS, True, True))
 
         for iii in range(loop):
-            dataset.show_data_image_with_label(ddd[iii])
+            img, _, _, clss, regs, msks = ddd[iii]
+            DataUtils(img, clss, regs, msks).show()
