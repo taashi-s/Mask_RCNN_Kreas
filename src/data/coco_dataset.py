@@ -10,9 +10,9 @@ from PIL import Image
 from enum import Enum
 from pycocotools.coco import COCO
 
-from utils import rpn_input_data as rpn_data
-from utils.image_utils import ImageUtils
-from utils.data_utils import DataUtils
+from .utils import rpn_input_data as rpn_data
+from .utils.image_utils import ImageUtils
+from .utils.data_utils import DataUtils
 
 class GenerateTarget(Enum):
     """
@@ -169,7 +169,7 @@ class COCODataset():
                     regions_list = []
                     masks_list = []
 
-                data_inputs = self.generate_data(data, anchors, image_shape, max_objects
+                data_inputs = self.generate_data(data, image_shape, max_objects, anchors
                                                  , include_rpns, include_heads)
                 img, cls_label, ofs_label, clss, regs, msks = data_inputs
                 img, cls_label, ofs_label, clss, regs, msks
@@ -257,11 +257,32 @@ class COCODataset():
         """
         show_image_with_label
         """
+        target = self.__data_list[image_id]
         if self.data_size() < image_id:
             return False
-        data = self.generate_data(self.__data_list[image_id], image_shape, max_objects, anchors, True, True)
+        image_filename = os.path.basename(target.path)
+        data = self.generate_data(target, image_shape, max_objects, anchors, True, True)
         img, _, _, clss, regs, msks = data
+        if img is None:
+            print('data is None : ', image_filename)
+            return
         DataUtils(img, clss, regs, msks).show()
+
+
+    def save_image_with_label(self, image_id, image_shape, anchors, save_dir, max_objects=10):
+        """
+        save_image_with_label
+        """
+        target = self.__data_list[image_id]
+        if self.data_size() < image_id:
+            return False
+        image_filename = os.path.basename(target.path)
+        data = self.generate_data(target, image_shape, max_objects, anchors, True, True)
+        img, _, _, clss, regs, msks = data
+        if img is None:
+            print('data is None : ', image_filename)
+            return
+        DataUtils(img, clss, regs, msks).save(os.path.join(save_dir, image_filename))
 
 
     def show_data_image(self, id, with_annotations=False):
@@ -308,9 +329,17 @@ if __name__ == '__main__':
     loop = 5
     if data_len > loop:
         ddd = []
+        """
         for iii in range(loop):
             ddd.append(dataset.generate_data(data_list[iii], INPUT_SHAPE, 2, ACS, True, True))
 
         for iii in range(loop):
             img, _, _, clss, regs, msks = ddd[iii]
             DataUtils(img, clss, regs, msks).show()
+        """
+        SAVE_DIR = os.path.join(os.path.dirname(__file__), 'tmp')
+        id_ofs = 118
+        for iii in range(data_len - id_ofs):
+            print('[Save] : ', iii + id_ofs)
+            dataset.save_image_with_label(iii + id_ofs, INPUT_SHAPE, ACS, SAVE_DIR)
+

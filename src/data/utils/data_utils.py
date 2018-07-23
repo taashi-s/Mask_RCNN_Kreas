@@ -19,6 +19,24 @@ class DataUtils():
 
 
     def show(self, with_regions=True, with_masks=True):
+        """
+        show
+        """
+        io.imshow(self.make_image(with_regions=with_regions, with_masks=with_masks))
+        io.show()
+
+
+    def save(self, save_path, with_regions=True, with_masks=True):
+        """
+        save
+        """
+        cv2.imwrite(save_path, self.make_image(with_regions=with_regions, with_masks=with_masks))
+
+
+    def make_image(self, with_regions=True, with_masks=True):
+        """
+        make_image
+        """
         img = np.flip(self.__image, axis=2).astype(np.uint8)
         idx_pos = np.where(np.any(self.__regions, axis=1))[0]
         regs = self.__regions[idx_pos]
@@ -36,6 +54,5 @@ class DataUtils():
             mask[:, :, 2][mask[:, :, 2] == 1] = color[2]
             cv2.addWeighted(mask, 1, img, 1, 0, img)
             i += 1
-        io.imshow(img)
-        io.show()
+        return img
 
