@@ -26,15 +26,15 @@ class MaskRCNN():
 
     def __init__(self, input_shape, class_num, anchors=None
                  , batch_size=5, mask_size=28, roi_pool_size=14
-                 , is_predict=False, train_taegets=None):
+                 , is_predict=False, train_targets=None):
         self.__input_shape = input_shape
-        if train_taegets is None:
-            train_taegets = []
-        train_head = TrainTarget.HEAD in train_taegets
-        train_rpn = TrainTarget.RPN in train_taegets
+        if train_targets is None:
+            train_targets = []
+        train_head = TrainTarget.HEAD in train_targets
+        train_rpn = TrainTarget.RPN in train_targets
 
         faster_rcnn = FasterRCNN(input_shape, class_num, anchors
-                                 , batch_size, is_predict, train_taegets)
+                                 , batch_size, is_predict, train_targets)
 
         first_layer, backbone = faster_rcnn.get_backbone_network()
         inputs, rpn = faster_rcnn.get_rpn_network()

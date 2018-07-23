@@ -56,7 +56,7 @@ def train(mode):
     anchors = rpn_input_data.get_anchors(INPUT_SHAPE)
 
     network = MaskRCNN(INPUT_SHAPE, 2
-                       , train_taegets= train_targets, is_predict=False
+                       , train_targets= train_targets, is_predict=False
                       )
     print('model compiling ...')
     model = network.get_model_with_default_compile()
