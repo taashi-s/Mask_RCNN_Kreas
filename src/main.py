@@ -4,12 +4,15 @@ import numpy as np
 import os
 import math
 from enum import Enum
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot
 
 from network.mask_rcnn import MaskRCNN, TrainTarget
 from network.subnetwork.faster_rcnn import rpn_input_data
 from data.coco_dataset import COCODataset, GenerateTarget
 
+#INPUT_SHAPE = (1024, 1024, 3)
 INPUT_SHAPE = (256, 256, 3)
 BATCH_SIZE = 2
 EPOCHS = 100
@@ -61,7 +64,7 @@ def train(mode):
     print('model compiling ...')
     model = network.get_model_with_default_compile()
     #network.draw_model_summary(file_name=os.path.join(os.pardir, 'ModelLayers.png'))
-    #model.summary()
+    model.summary()
     print('... compiled')
 
     model_filename_base = os.path.join(DIR_MODEL, FILE_MODEL)
@@ -118,7 +121,8 @@ def plotLearningCurve(history):
     pyplot.plot(x, history.history['loss'], label="loss")
     pyplot.title("loss")
     pyplot.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    pyplot.show()
+#    pyplot.show()
+    pyplot.savefig('LearningCurve.png')
 
 
 def predict():
@@ -130,5 +134,8 @@ def predict():
 
 
 if __name__ == '__main__':
-    train(Train_Mode.STEP1)
-    predict()
+#    train(Train_Mode.STEP1)
+    train(Train_Mode.STEP2)
+    train(Train_Mode.STEP3)
+    train(Train_Mode.STEP4)
+#    predict()

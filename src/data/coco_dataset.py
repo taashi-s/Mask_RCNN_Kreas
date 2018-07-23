@@ -160,7 +160,6 @@ class COCODataset():
         while True:
             random.shuffle(data_list)
             for data in data_list:
-                image_list = []
                 if (image_list == []) or (len(image_list) >= batch_size):
                     image_list = []
                     rpn_classes_list = []
@@ -172,13 +171,12 @@ class COCODataset():
                 data_inputs = self.generate_data(data, image_shape, max_objects, anchors
                                                  , include_rpns, include_heads)
                 img, cls_label, ofs_label, clss, regs, msks = data_inputs
-                img, cls_label, ofs_label, clss, regs, msks
                 if img is None:
                     continue
 
                 image_list.append(img)
-                rpn_classes_list.append(ofs_label)
-                rpn_offsets_list.append(cls_label)
+                rpn_classes_list.append(cls_label)
+                rpn_offsets_list.append(ofs_label)
                 classes_list.append(clss)
                 regions_list.append(regs)
                 masks_list.append(msks)
@@ -187,9 +185,9 @@ class COCODataset():
                     inputs = [np.array(image_list)]
                     outputs = []
                     if include_rpns:
-                        inputs += [np.array(rpn_offsets_list), np.array(rpn_classes_list)]
+                        inputs += [np.array(rpn_classes_list), np.array(rpn_offsets_list)]
                     if include_heads:
-                        inputs += [np.array(regions_list), np.array(classes_list)]
+                        inputs += [np.array(classes_list), np.array(regions_list)]
                         inputs += [np.array(masks_list)]
                     yield inputs, outputs
 
@@ -249,6 +247,8 @@ class COCODataset():
             clss[:len(clss_tmp)] = clss_tmp
             regs[:len(regs_tmp), :] = regs_tmp
             msks[:len(msks_tmp), :] = msks_tmp
+
+            clss = np.expand_dims(clss, axis=1)
 
         return resize_img, cls_label, ofs_label, clss, regs, msks
 

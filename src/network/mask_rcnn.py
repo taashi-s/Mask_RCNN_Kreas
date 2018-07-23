@@ -52,7 +52,7 @@ class MaskRCNN():
 
             dtrm = DetectionTargetRegionMask(positive_threshold=0.5, positive_ratio=0.33
                                              , image_shape=self.__input_shape, batch_size=batch_size
-                                             , exclusion_threshold=0.1, count_per_batch=64
+                                             , exclusion_threshold=0.1, count_per_batch=20
                                              , mask_size=mask_size
                                             )([inputs_cls, inputs_reg, inputs_msk, rpn_prop_regs])
             dtrm_cls_labels, dtrm_ofs_labels, dtrm_msk_labels, dtrm_regions = dtrm
@@ -71,7 +71,7 @@ class MaskRCNN():
             classes, offsets = faster_rcnn.head_net(backbone, rpn_prop_regs, class_num
                                                     , batch_size=batch_size)
             sqzt = SqueezeTarget(batch_size=5, image_shape=self.__input_shape
-                                 , squeeze_threshold=0.7, max_pred_count=50, nms_threshold=0.3
+                                 , squeeze_threshold=0.7, max_pred_count=10, nms_threshold=0.3
                                  , refinement_std_dev=None
                                 )([rpn_prop_regs, classes, offsets])
             sqzt_real_reg, sqzt_reg_pred, sqzt_cls_pred, sqzt_cls_ids = sqzt
