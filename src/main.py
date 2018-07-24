@@ -8,6 +8,10 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot
 
+import keras.backend.tensorflow_backend as KB_tf
+import keras.callbacks
+import tensorflow as tf
+
 from network.mask_rcnn import MaskRCNN, TrainTarget
 from network.subnetwork.faster_rcnn import rpn_input_data
 from data.coco_dataset import COCODataset, GenerateTarget
@@ -56,10 +60,15 @@ def train(mode):
         train_targets = [TrainTarget.RPN, TrainTarget.HEAD]
         gener_targets = [GenerateTarget.RPN_INPUT, GenerateTarget.HEAD_INPUT]
 
+    session = tf.Session('')
+    KB_tf.set_session(session)
+    KB_tf.set_learning_phase(1)
+
     anchors = rpn_input_data.get_anchors(INPUT_SHAPE)
 
     network = MaskRCNN(INPUT_SHAPE, 2
-                       , train_targets= train_targets, is_predict=False
+                       , anchors=anchors, batch_size=BATCH_SIZE, mask_size=28, roi_pool_size=14
+                       , is_predict=False, train_targets= train_targets
                       )
     print('model compiling ...')
     model = network.get_model_with_default_compile()
@@ -97,6 +106,11 @@ def train(mode):
                                         , target_data_list=basedata_valid
                                         , genetate_targets=gener_targets
                                        )
+    callbacks = [keras.callbacks.TensorBoard(log_dir='./log/'
+                                             , histogram_freq=0
+                                             , write_graph=True
+                                             , write_images=False)
+                ]
     print('... created')
 
     print('fix ...')
@@ -104,8 +118,8 @@ def train(mode):
                               , steps_per_epoch=math.ceil(train_data_num / BATCH_SIZE)
                               , epochs=EPOCHS
                               , verbose=1
-                              , use_multiprocessing=True
-                              #, callbacks=callbacks
+                              , use_multiprocessing=False # True
+                              , callbacks=callbacks
                               , validation_data=valid_generator
                               , validation_steps=math.ceil(valid_data_num / BATCH_SIZE)
                              )
@@ -134,7 +148,7 @@ def predict():
 
 
 if __name__ == '__main__':
-    train(Train_Mode.STEP1)
+#    train(Train_Mode.STEP1)
     train(Train_Mode.STEP2)
     train(Train_Mode.STEP3)
     train(Train_Mode.STEP4)

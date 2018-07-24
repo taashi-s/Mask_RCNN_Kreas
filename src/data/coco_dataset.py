@@ -189,6 +189,11 @@ class COCODataset():
                     if include_heads:
                         inputs += [np.array(classes_list), np.array(regions_list)]
                         inputs += [np.array(masks_list)]
+
+                    #print('')
+                    #for k, inp in enumerate(inputs):
+                        #print('input(', k, ')>>> ', np.shape(inp))
+
                     yield inputs, outputs
 
 

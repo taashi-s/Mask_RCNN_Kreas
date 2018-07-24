@@ -68,7 +68,7 @@ class DetectionTargetRegionMask(KELayer.Layer):
 
 
     def __shaping_inputs(self, cls_label, reg_label, msk_label, region):
-        cls_label_2d = KB.squeeze(cls_label, 0)
+        cls_label_1d = KB.squeeze(KB.squeeze(cls_label, 0), 1)
         reg_label_2d = KB.squeeze(reg_label, 0)
         msk_label_3d = KB.squeeze(msk_label, 0)
         region_2d = KB.squeeze(region, 0)
@@ -76,24 +76,20 @@ class DetectionTargetRegionMask(KELayer.Layer):
         target_lbl_ids = KB.flatten(tf.where(KB.any(reg_label_2d, axis=1)))
         target_reg_ids = KB.flatten(tf.where(KB.any(region_2d, axis=1)))
 
-        cls_lbl = KB.gather(cls_label_2d, target_lbl_ids)
+        cls_lbl = KB.gather(cls_label_1d, target_lbl_ids)
         reg_lbl = KB.gather(reg_label_2d, target_lbl_ids)
         msk_lbl = KB.gather(msk_label_3d, target_lbl_ids)
         reg = KB.gather(region_2d, target_reg_ids)
         return cls_lbl, reg_lbl, msk_lbl, reg
 
 
-    def __get_positive(self, ious):
-        max_iou = KB.max(ious, axis=1)
-        ids = KB.flatten(tf.where(max_iou >= self.__th))
-        count = round(self.__count_per_batch * self.__ratio)
+    def __get_positive(self, max_ious, count):
+        ids = KB.flatten(tf.where(max_ious >= self.__th))
         return self.__get_shuffle_sample(ids, count)
 
 
-    def __get_negative(self, ious, positive_count):
-        max_iou = KB.max(ious, axis=1)
-        ids = KB.flatten(tf.where((self.__excl_th <= max_iou) & (max_iou < self.__th)))
-        count = self.__count_per_batch - positive_count
+    def __get_negative(self, max_ious, count):
+        ids = KB.flatten(tf.where((self.__excl_th <= max_ious) & (max_ious < self.__th)))
         return self.__get_shuffle_sample(ids, count)
 
 
@@ -106,8 +102,11 @@ class DetectionTargetRegionMask(KELayer.Layer):
 
     def __get_target_data(self, cls_lbl, reg_lbl, msk_lbl, reg):
         ious = RegionsUtils(reg).calc_iou(reg_lbl)
-        positive_ids = self.__get_positive(ious)
-        negative_ids = self.__get_negative(ious, KB.shape(positive_ids)[0])
+        max_ious = KB.max(ious, axis=1)
+        positive_count = round(self.__count_per_batch * self.__ratio)
+        negative_count = self.__count_per_batch - positive_count
+        positive_ids = self.__get_positive(max_ious, positive_count)
+        negative_ids = self.__get_negative(max_ious, negative_count)
 
         target_reg_ids = KB.concatenate((positive_ids, negative_ids))
         max_iou_ids = KB.argmax(ious, axis=1)
@@ -116,7 +115,7 @@ class DetectionTargetRegionMask(KELayer.Layer):
 
         target_reg = KB.gather(reg, target_reg_ids)
         target_ofs = self.__get_target_offset(reg_lbl, target_reg_lbl_ids, target_reg)
-        target_cls = self.__get_target_class_label(cls_lbl, target_cls_lbl_ids, negative_ids)
+        target_cls = self.__get_target_class_label(cls_lbl, target_cls_lbl_ids, KB.shape(negative_ids)[0])
         target_msk = self.__get_target_mask_label(msk_lbl, target_reg_lbl_ids, target_reg)
         return self.__padding_data(target_reg, target_ofs, target_cls, target_msk)
 
@@ -126,10 +125,11 @@ class DetectionTargetRegionMask(KELayer.Layer):
         return RegionsUtils(target_reg_lbl).calc_offset(target_reg)
 
 
-    def __get_target_class_label(self, cls_lbl, target_cls_lbl_ids, negative_ids):
-        target_cls = KB.squeeze(KB.cast(KB.gather(cls_lbl, target_cls_lbl_ids), 'int32'), 1)
-        padding = KB.zeros([KB.shape(negative_ids)[0]], dtype='int32')
-        return KB.expand_dims(KB.concatenate((target_cls, padding)), 1)
+    def __get_target_class_label(self, cls_lbl, target_cls_lbl_ids, negative_count):
+        target_cls = KB.gather(cls_lbl, target_cls_lbl_ids)
+        target_cls_c = KB.cast(target_cls, 'int32')
+        padding = KB.zeros([negative_count], dtype='int32')
+        return KB.concatenate((target_cls_c, padding))
 
 
     def __get_target_mask_label(self, msk_lbl, target_reg_lbl_ids, target_reg):
@@ -144,11 +144,12 @@ class DetectionTargetRegionMask(KELayer.Layer):
 
     def __padding_data(self, regs, ofss, clss, msks):
         padding_count = KB.maximum(self.__count_per_batch - KB.shape(regs)[0], 0)
-        paddings = [(0, padding_count), (0, 0)]
+        reg_paddings = [(0, padding_count), (0, 0)]
+        cls_paddings = [(0, padding_count)]
         mask_shape = (self.__count_per_batch, self.__mask_size_h, self.__mask_size_w)
-        padding_regs = KB.reshape(tf.pad(regs, paddings), (self.__count_per_batch, 4))
-        padding_ofss = KB.reshape(tf.pad(ofss, paddings), (self.__count_per_batch, 4))
-        padding_clss = KB.reshape(tf.pad(clss, paddings), (self.__count_per_batch, 1))
+        padding_regs = KB.reshape(tf.pad(regs, reg_paddings), (self.__count_per_batch, 4))
+        padding_ofss = KB.reshape(tf.pad(ofss, reg_paddings), (self.__count_per_batch, 4))
+        padding_clss = KB.reshape(tf.pad(clss, cls_paddings), (self.__count_per_batch, 1))
         padding_msks = KB.reshape(tf.pad(msks, [(0, padding_count), (0, 0), (0, 0)]), mask_shape)
         return padding_regs, padding_ofss, padding_clss, padding_msks
 

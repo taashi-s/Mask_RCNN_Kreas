@@ -44,10 +44,10 @@ class MaskRCNN():
             inputs, outputs = faster_rcnn.get_rpn_loss_network()
 
         if train_head and not is_predict:
-            mask_h, mask_w = KCUtils.normalize_tuple(mask_size, 2, 'mask_size')
+            image_h, image_w, _ = self.__input_shape
             inputs_cls = Input(shape=[None, 1], dtype='int32', name='head_cls_input')
             inputs_reg = Input(shape=[None, 4], dtype='float32', name='head_reg_input')
-            inputs_msk = Input(shape=[None, mask_h, mask_w], dtype='float32', name='head_msk_input')
+            inputs_msk = Input(shape=[None, image_h, image_w], dtype='float32', name='head_msk_input')
             inputs += [inputs_cls, inputs_reg, inputs_msk]
 
             dtrm = DetectionTargetRegionMask(positive_threshold=0.5, positive_ratio=0.33
@@ -83,7 +83,6 @@ class MaskRCNN():
 
             outputs += [sqzt_real_reg, sqzt_cls_pred, sqzt_cls_ids, target_masks
                         , sqzt_reg_pred, rpn_regions, rpn_cls_probs]
-
         self.__network = (inputs, outputs)
         self.__model = Model(inputs=inputs, outputs=outputs)
 
@@ -102,6 +101,7 @@ class MaskRCNN():
         """
         roi_pool = RoIPooling(batch_size=batch_size, pooling=roi_pool_size
                               , image_shape=self.__input_shape
+                              , name='poi_pooling_mask'
                              )([fmaps, regions])
 
         conv_layers = roi_pool
