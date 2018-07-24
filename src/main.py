@@ -64,7 +64,7 @@ def train(mode):
     print('model compiling ...')
     model = network.get_model_with_default_compile()
     #network.draw_model_summary(file_name=os.path.join(os.pardir, 'ModelLayers.png'))
-    model.summary()
+    #model.summary()
     print('... compiled')
 
     model_filename_base = os.path.join(DIR_MODEL, FILE_MODEL)
@@ -134,7 +134,7 @@ def predict():
 
 
 if __name__ == '__main__':
-#    train(Train_Mode.STEP1)
+    train(Train_Mode.STEP1)
     train(Train_Mode.STEP2)
     train(Train_Mode.STEP3)
     train(Train_Mode.STEP4)

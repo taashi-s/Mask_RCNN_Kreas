@@ -91,7 +91,7 @@ class MaskRCNN():
             for output in outputs:
                 self.__model.add_loss(tf.reduce_mean(output))
         else:
-            dummy_loss = Lambda(lambda x: KB.constant(0.0))(first_layer)
+            dummy_loss = Lambda(lambda x: KB.constant(0.0), name='dummy_loss')(first_layer)
             self.__model.add_loss(tf.reduce_mean(dummy_loss))
 
 

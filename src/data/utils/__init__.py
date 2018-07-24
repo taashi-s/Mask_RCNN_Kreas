@@ -15,8 +15,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'
                                                       #, 'utils'
                                                       ))
 
-print(sys.path)
-
 from .image_utils import ImageUtils
 from .data_utils import DataUtils
 #from layers.utils import RegionsUtils

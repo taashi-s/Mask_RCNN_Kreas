@@ -15,9 +15,10 @@ class MaskLoss():
     Mask Loss Layer class
     """
 
-    def __init__(self):
+    def __init__(self, name='mask_loss'):
         self.__layer = Lambda(lambda inputs: self.__mask_loss(*inputs)
-                              , output_shape=self.__mask_loss_output_shape)
+                              , output_shape=self.__mask_loss_output_shape
+                              , name=name)
 
 
     def __call__(self, inputs):

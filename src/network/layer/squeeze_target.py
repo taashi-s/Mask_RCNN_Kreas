@@ -17,7 +17,7 @@ class SqueezeTarget():
 
     def __init__(self, batch_size=5, image_shape=None
                  , squeeze_threshold=0.7, max_pred_count=50, nms_threshold=0.3
-                 , refinement_std_dev=None):
+                 , refinement_std_dev=None, name='squeeze_target'):
         self.__batch_size = batch_size
         self.__image_shape = image_shape
         self.__th = squeeze_threshold
@@ -27,7 +27,8 @@ class SqueezeTarget():
         if refinement_std_dev is not None:
             self.__ref_std = refinement_std_dev
         self.__layer = Lambda(lambda inputs: self.__squeeze_target(*inputs)
-                              , output_shape=self.__squeeze_target_output_shape)
+                              , output_shape=self.__squeeze_target_output_shape
+                              , name=name)
 
 
     def __call__(self, inputs):

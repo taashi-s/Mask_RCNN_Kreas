@@ -13,9 +13,10 @@ class PickTaretMask():
     Pick Target Mask Layer class
     """
 
-    def __init__(self):
+    def __init__(self, name='pick_mask'):
         self.__layer = Lambda(lambda inputs: self.__pick_target_mask(*inputs)
-                              , output_shape=self.__pick_target_mask_output_shape)
+                              , output_shape=self.__pick_target_mask_output_shape
+                              , name=name)
 
 
     def __call__(self, inputs):
