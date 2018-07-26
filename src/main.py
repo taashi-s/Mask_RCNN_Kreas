@@ -18,8 +18,8 @@ from data.coco_dataset import COCODataset, GenerateTarget
 
 #INPUT_SHAPE = (1024, 1024, 3)
 INPUT_SHAPE = (256, 256, 3)
-BATCH_SIZE = 2
-EPOCHS = 100
+BATCH_SIZE = 4
+EPOCHS = 1000
 
 DIR_MODEL = '.'
 FILE_MODEL = 'MaskRCNN_Model'
@@ -64,8 +64,8 @@ def train(mode):
     KB_tf.set_session(session)
     KB_tf.set_learning_phase(1)
 
-    anchors = rpn_input_data.get_anchors(INPUT_SHAPE)
-
+    backbone_shape = MaskRCNN.get_backbone_output_shape(INPUT_SHAPE)
+    anchors = rpn_input_data.get_anchors(INPUT_SHAPE, backbone_shape)
     network = MaskRCNN(INPUT_SHAPE, 2
                        , anchors=anchors, batch_size=BATCH_SIZE, mask_size=28, roi_pool_size=14
                        , is_predict=False, train_targets= train_targets
@@ -109,7 +109,13 @@ def train(mode):
     callbacks = [keras.callbacks.TensorBoard(log_dir='./log/'
                                              , histogram_freq=0
                                              , write_graph=True
-                                             , write_images=False)
+                                             , write_images=True)
+                , keras.callbacks.ModelCheckpoint(filepath=model_filename
+                                                  , verbose=1
+                                                  , save_weights_only=True
+                                                  , save_best_only=True
+                                                  , period=20
+                                                 )
                 ]
     print('... created')
 
@@ -147,9 +153,20 @@ def predict():
     print('execute predict')
 
 
+def aaaaa(tag):
+    print('###############################################')
+    print('################ ', tag, ' ##################')
+    print('###############################################')
+
+
 if __name__ == '__main__':
-#    train(Train_Mode.STEP1)
-    train(Train_Mode.STEP2)
-    train(Train_Mode.STEP3)
-    train(Train_Mode.STEP4)
+    aaaaa('Step 1')
+    train(Train_Mode.STEP1)
+#    aaaaa('Step 2')
+#    train(Train_Mode.STEP2)
+#    aaaaa('Step 3')
+#    train(Train_Mode.STEP3)
+#    aaaaa('Step 4')
+#    train(Train_Mode.STEP4)
+#    aaaaa('Step 5')
 #    predict()

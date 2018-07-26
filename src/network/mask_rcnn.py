@@ -11,7 +11,7 @@ from keras.layers.wrappers import TimeDistributed
 from keras.layers.core import Activation, Reshape, Lambda
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.normalization import BatchNormalization
-from keras.optimizers import SGD
+from keras.optimizers import SGD, Adam
 from keras.utils import plot_model
 import keras.utils.conv_utils as KCUtils
 
@@ -83,6 +83,7 @@ class MaskRCNN():
 
             outputs += [sqzt_real_reg, sqzt_cls_pred, sqzt_cls_ids, target_masks
                         , sqzt_reg_pred, rpn_regions, rpn_cls_probs]
+
         self.__network = (inputs, outputs)
         self.__model = Model(inputs=inputs, outputs=outputs)
 
@@ -144,8 +145,9 @@ class MaskRCNN():
         TODO : Write description
         default_compile
         """
-        self.__model.compile(optimizer=SGD(momentum=0.9, decay=0.0001)
-                             , loss=[None] * len(self.__model.outputs), metrics=[])
+        #self.__model.compile(optimizer=SGD(momentum=0.9, decay=0.0001)
+        self.__model.compile(optimizer=Adam()
+                             , loss=[None] * len(self.__model.outputs), metrics=['tmpa'])
 
 
     def get_model_with_default_compile(self):
@@ -163,3 +165,11 @@ class MaskRCNN():
         draw_model_summary
         """
         plot_model(self.__model, to_file=file_name)
+
+
+    @staticmethod
+    def get_backbone_output_shape(input_shape):
+        """
+        get_backbone_output_shape
+        """
+        return FasterRCNN.get_backbone_output_shape(input_shape)
