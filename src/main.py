@@ -19,7 +19,7 @@ from data.coco_dataset import COCODataset, GenerateTarget
 INPUT_SHAPE = (1024, 1024, 3)
 #INPUT_SHAPE = (256, 256, 3)
 BATCH_SIZE = 4
-EPOCHS = 500
+EPOCHS = 1000
 
 DIR_MODEL = '.'
 FILE_MODEL = 'MaskRCNN_Model'
@@ -137,20 +137,20 @@ def train(mode):
     print('model saveing ...')
     model.save_weights(model_filename)
     print('... saved')
-    plotLearningCurve(his, surfix=step_surfix)
+    saveLearningCurve(his, surfix=step_surfix)
 
 
-def plotLearningCurve(history, surfix=None):
-    """ plotLearningCurve """
+def saveLearningCurve(history, surfix=None):
+    """ saveLearningCurve """
     x = range(EPOCHS)
     pyplot.plot(x, history.history['loss'], label="loss")
     pyplot.title("loss")
     pyplot.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-#    pyplot.show()
     lc_name = 'LearningCurve'
     if surfix is not None:
         lc_name += '_' + surfix
     pyplot.savefig(lc_name + '.png')
+    pyplot.close()
 
 
 def predict():
