@@ -18,8 +18,8 @@ from data.coco_dataset import COCODataset, GenerateTarget
 
 INPUT_SHAPE = (1024, 1024, 3)
 #INPUT_SHAPE = (256, 256, 3)
-BATCH_SIZE = 2
-EPOCHS = 3
+BATCH_SIZE = 4
+EPOCHS = 500
 
 DIR_MODEL = '.'
 FILE_MODEL = 'MaskRCNN_Model'
