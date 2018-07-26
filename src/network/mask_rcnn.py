@@ -147,7 +147,7 @@ class MaskRCNN():
         """
         #self.__model.compile(optimizer=SGD(momentum=0.9, decay=0.0001)
         self.__model.compile(optimizer=Adam()
-                             , loss=[None] * len(self.__model.outputs), metrics=['tmpa'])
+                             , loss=[None] * len(self.__model.outputs), metrics=[])
 
 
     def get_model_with_default_compile(self):

@@ -16,10 +16,10 @@ from network.mask_rcnn import MaskRCNN, TrainTarget
 from network.subnetwork.faster_rcnn import rpn_input_data
 from data.coco_dataset import COCODataset, GenerateTarget
 
-#INPUT_SHAPE = (1024, 1024, 3)
-INPUT_SHAPE = (256, 256, 3)
-BATCH_SIZE = 4
-EPOCHS = 1000
+INPUT_SHAPE = (1024, 1024, 3)
+#INPUT_SHAPE = (256, 256, 3)
+BATCH_SIZE = 2
+EPOCHS = 3
 
 DIR_MODEL = '.'
 FILE_MODEL = 'MaskRCNN_Model'
@@ -77,18 +77,23 @@ def train(mode):
     print('... compiled')
 
     model_filename_base = os.path.join(DIR_MODEL, FILE_MODEL)
-    model_filename = model_filename_base + EXT_MODEL
+    pre_step_surfix = ''
+    step_surfix = ''
     if mode == Train_Mode.STEP1:
-        model_filename = model_filename_base + '_Step1' + EXT_MODEL
+        step_surfix = 'Step1'
     elif mode == Train_Mode.STEP2:
-        model.load_weights(model_filename_base + '_Step1' + EXT_MODEL, by_name=True)
-        model_filename = model_filename_base + '_Step2' + EXT_MODEL
+        pre_step_surfix = 'Step1'
+        step_surfix = 'Step2'
     elif mode == Train_Mode.STEP3:
-        model.load_weights(model_filename_base + '_Step2' + EXT_MODEL, by_name=True)
-        model_filename = model_filename_base + '_Step3' + EXT_MODEL
+        pre_step_surfix = 'Step2'
+        step_surfix = 'Step3'
     elif mode == Train_Mode.STEP4:
-        model.load_weights(model_filename_base + '_Step3' + EXT_MODEL, by_name=True)
-        model_filename = model_filename_base + '_Step4' + EXT_MODEL
+        pre_step_surfix = 'Step3'
+        step_surfix = 'Step4'
+
+    if mode != Train_Mode.STEP1:
+        model.load_weights(model_filename_base + '_' + pre_step_surfix + EXT_MODEL, by_name=True)
+    model_filename = model_filename_base + '_' + step_surfix + EXT_MODEL
 
     print('dataset create ...')
     dataset = COCODataset(categories=['cat'])
@@ -132,17 +137,20 @@ def train(mode):
     print('model saveing ...')
     model.save_weights(model_filename)
     print('... saved')
-    plotLearningCurve(his)
+    plotLearningCurve(his, surfix=step_surfix)
 
 
-def plotLearningCurve(history):
+def plotLearningCurve(history, surfix=None):
     """ plotLearningCurve """
     x = range(EPOCHS)
     pyplot.plot(x, history.history['loss'], label="loss")
     pyplot.title("loss")
     pyplot.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 #    pyplot.show()
-    pyplot.savefig('LearningCurve.png')
+    lc_name = 'LearningCurve'
+    if surfix is not None:
+        lc_name += '_' + surfix
+    pyplot.savefig(lc_name + '.png')
 
 
 def predict():
@@ -155,18 +163,17 @@ def predict():
 
 def aaaaa(tag):
     print('###############################################')
-    print('################ ', tag, ' ##################')
+    print('################## ', tag, ' ###################')
     print('###############################################')
 
 
 if __name__ == '__main__':
     aaaaa('Step 1')
     train(Train_Mode.STEP1)
-#    aaaaa('Step 2')
-#    train(Train_Mode.STEP2)
-#    aaaaa('Step 3')
-#    train(Train_Mode.STEP3)
-#    aaaaa('Step 4')
-#    train(Train_Mode.STEP4)
-#    aaaaa('Step 5')
+    aaaaa('Step 2')
+    train(Train_Mode.STEP2)
+    aaaaa('Step 3')
+    train(Train_Mode.STEP3)
+    aaaaa('Step 4')
+    train(Train_Mode.STEP4)
 #    predict()

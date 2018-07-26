@@ -58,7 +58,6 @@ class COCODataset():
         if data_dir is not None:
             self.__dir = data_dir
         self.__type = data_type
-        #self.__categories = categories
         self.__ann_json_path = os.path.join(self.__dir
                                             , self.ANNOTATION_DIR
                                             , self.__get_annotaion_filename()
@@ -84,6 +83,16 @@ class COCODataset():
         self.__categories = []
         for cid in self.__ctg_ids:
             self.__categories.append(COCOCategory(cid, self.__coco.loadCats(cid)[0]["name"]))
+
+
+    def category_id_to_class_index(self, ctg_id):
+        """
+        category_id_to_class_index
+        """
+        id = None
+        if ctg_id in self.__ctg_ids:
+            id = self.__ctg_ids.index(ctg_id)
+        return id
 
 
     def load_data(self):
@@ -232,7 +241,7 @@ class COCODataset():
             if (reg[2] - reg[0]) < reg_min_h or (reg[3] - reg[1]) < reg_min_w:
                 continue
 
-            clss_tmp.append(annotation['category_id'])
+            clss_tmp.append(self.category_id_to_class_index(annotation['category_id']))
             regs_tmp.append(reg)
             msks_tmp.append(resize_mask)
 
