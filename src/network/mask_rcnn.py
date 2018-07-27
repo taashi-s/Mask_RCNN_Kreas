@@ -40,8 +40,9 @@ class MaskRCNN():
         inputs, rpn = faster_rcnn.get_rpn_network()
         rpn_cls_probs, rpn_regions, rpn_prop_regs = rpn
         outputs = []
+        output_names = []
         if train_rpn and not is_predict:
-            inputs, outputs = faster_rcnn.get_rpn_loss_network()
+            inputs, outputs, output_names = faster_rcnn.get_rpn_loss_network()
 
         if train_head and not is_predict:
             image_h, image_w, _ = self.__input_shape
@@ -67,7 +68,7 @@ class MaskRCNN():
             msk_losses = MaskLoss()([dtrm_cls_labels, dtrm_msk_labels, masks])
 
             outputs += [cls_losses, reg_losses, msk_losses]
-
+            output_names += ['cls_losses', 'reg_losses', 'msk_losses']
         if is_predict:
             classes, offsets = faster_rcnn.head_net(backbone, rpn_prop_regs, class_num
                                                     , trainable=train_head, batch_size=batch_size)
@@ -88,8 +89,8 @@ class MaskRCNN():
         self.__model = Model(inputs=inputs, outputs=outputs)
 
         if not is_predict:
-            for output in outputs:
-                self.__model.add_loss(tf.reduce_mean(output))
+            for output, name in zip(outputs, output_names):
+                self.__model.add_loss(tf.reduce_mean(output), name=name)
         else:
             dummy_loss = Lambda(lambda x: KB.constant(0.0), name='dummy_loss')(first_layer)
             self.__model.add_loss(tf.reduce_mean(dummy_loss))

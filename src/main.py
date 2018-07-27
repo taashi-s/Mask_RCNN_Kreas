@@ -15,6 +15,7 @@ import tensorflow as tf
 from network.mask_rcnn import MaskRCNN, TrainTarget
 from network.subnetwork.faster_rcnn import rpn_input_data
 from data.coco_dataset import COCODataset, GenerateTarget
+from history_checkpoint_callback import HistoryCheckpoint
 
 INPUT_SHAPE = (1024, 1024, 3)
 #INPUT_SHAPE = (256, 256, 3)
@@ -121,6 +122,11 @@ def train(mode):
                                                   , save_best_only=True
                                                   , period=20
                                                  )
+                , HistoryCheckpoint(filepath='LearningCurve' + '_{history}_' + step_surfix + '.png'
+                                   , verbose=1
+                                   , period=2
+                                   )
+                , keras.callbacks.CSVLogger('train_log_' + step_surfix + '.csv')
                 ]
     print('... created')
 
@@ -170,10 +176,10 @@ def aaaaa(tag):
 if __name__ == '__main__':
     aaaaa('Step 1')
     train(Train_Mode.STEP1)
-    aaaaa('Step 2')
-    train(Train_Mode.STEP2)
-    aaaaa('Step 3')
-    train(Train_Mode.STEP3)
-    aaaaa('Step 4')
-    train(Train_Mode.STEP4)
+#    aaaaa('Step 2')
+#    train(Train_Mode.STEP2)
+#    aaaaa('Step 3')
+#    train(Train_Mode.STEP3)
+#    aaaaa('Step 4')
+#    train(Train_Mode.STEP4)
 #    predict()
