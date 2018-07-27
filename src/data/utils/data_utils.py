@@ -11,11 +11,15 @@ class DataUtils():
     """
     Data Utils Class
     """
-    def __init__(self, image, classes, regions, masks):
+    def __init__(self, image, classes, regions, masks, scores=None, rois=None):
         self.__image = image
         self.__clsses = classes
         self.__regions = regions
         self.__masks = masks
+        self.__rois = rois
+        self.__scores = [None for _ in range(len(classes))]
+        if scores is not None:
+            self.__scores = scores
 
 
     def show(self, with_regions=True, with_masks=True):
@@ -38,21 +42,23 @@ class DataUtils():
         make_image
         """
         img = np.flip(self.__image, axis=2).astype(np.uint8)
-        idx_pos = np.where(np.any(self.__regions, axis=1))[0]
-        regs = self.__regions[idx_pos]
-        msks = self.__masks[idx_pos]
-        c = [i for i in range(255)[::(255 // regs.shape[0] - 1)]]
-        i = 0
-        for reg, mask in zip(regs, msks):
+        zip_data = zip(self.__clsses, self.__scores, self.__regions, self.__masks)
+        col = [i for i in range(255)[::(255 // self.__regions.shape[0] - 1)]]
+        for k, (cla, scr, reg, msk) in enumerate(zip_data):
             reg = reg.astype(np.uint32)
-            mask = mask.astype(np.uint8)
-            color = (c[i], c[::-1][i], 0)
-            cv2.rectangle(img, (reg[1], reg[0]), (reg[3], reg[2]), color, 2)
-            mask = np.dstack([mask, mask, mask])
-            mask[:, :, 0][mask[:, :, 0] == 1] = color[0]
-            mask[:, :, 1][mask[:, :, 1] == 1] = color[1]
-            mask[:, :, 2][mask[:, :, 2] == 1] = color[2]
-            cv2.addWeighted(mask, 1, img, 1, 0, img)
-            i += 1
+            msk = msk.astype(np.uint8)
+            color = (col[k], col[::-1][k], 0)
+            reg_lt = (reg[1], reg[0])
+            reg_rb = (reg[3], reg[2])
+
+            caption = 'class(' + cla + ')'
+            if scr is not None:
+                caption += ' : .3f' % scr
+            cv2.putText(img, caption, reg_lt, cv2.FONT_HERSHEY_PLAIN, 1, color)
+            cv2.rectangle(img, reg_lt, reg_rb, color, 2)
+            for ch in range(3):
+                img[:, :, ch] = np.where(msk == 1
+                                         , img[:, :, ch] * 0.5 + 0.5 * color[ch] * 255
+                                         , img[:, :, ch])
         return img
 

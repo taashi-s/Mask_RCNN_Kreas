@@ -95,6 +95,25 @@ class COCODataset():
         return id
 
 
+    def class_index_to_category_id(self, ind):
+        """
+        class_index_to_category_id
+        """
+        id = ind
+        if len(self.__ctg_ids) > ind:
+            id = self.__ctg_ids[ind]
+        return id
+
+
+    def get_category(self, ctg_id):
+        """
+        """
+        for ctg_info in self.__categories:
+            if ctg_info.id == ctg_id:
+                return ctg_info
+        return None
+
+
     def load_data(self):
         """
         load_data
@@ -280,7 +299,9 @@ class COCODataset():
         if img is None:
             print('data is None : ', image_filename)
             return
-        DataUtils(img, clss, regs, msks).show()
+        idx_pos = np.where(np.any(regs, axis=1))[0]
+        cls_names = [(self.get_category(c)).name for c in clss]
+        DataUtils(img, cls_names, regs[idx_pos], msks[idx_pos]).show()
 
 
     def save_image_with_label(self, image_id, image_shape, anchors, save_dir, max_objects=10):
@@ -296,7 +317,9 @@ class COCODataset():
         if img is None:
             print('data is None : ', image_filename)
             return
-        DataUtils(img, clss, regs, msks).save(os.path.join(save_dir, image_filename))
+        idx_pos = np.where(np.any(regs, axis=1))[0]
+        cls_names = [(self.get_category(c)).name for c in clss]
+        DataUtils(img, cls_names, regs[idx_pos], msks[idx_pos]).show()
 
 
     def show_data_image(self, id, with_annotations=False):
