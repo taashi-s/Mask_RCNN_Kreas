@@ -3,6 +3,7 @@ TODO : Write description
 Faster R-CNN Module
 """
 
+import numpy as np
 import tensorflow as tf
 import keras.backend as KB
 from keras.models import Model
@@ -71,7 +72,7 @@ class MaskRCNN():
         if is_predict:
             classes, offsets = faster_rcnn.head_net(backbone, rpn_prop_regs, class_num
                                                     , trainable=train_head, batch_size=batch_size)
-            sqzt = SqueezeTarget(batch_size=5, image_shape=self.__input_shape
+            sqzt = SqueezeTarget(batch_size=batch_size, image_shape=self.__input_shape
                                  , squeeze_threshold=0.7, max_pred_count=10, nms_threshold=0.3
                                  , refinement_std_dev=None
                                 )([rpn_prop_regs, classes, offsets])
@@ -166,6 +167,30 @@ class MaskRCNN():
         """
         plot_model(self.__model, to_file=file_name)
 
+
+    def zip_predict_by_batch(self, predicts, batch):
+      """
+      zip_outputs_by_batch
+      """
+      a_split = np.split(predicts[0], batch)
+      b_split = np.split(predicts[1], batch)
+      c_split = np.split(predicts[2], batch)
+      d_split = np.split(predicts[3], batch)
+      e_split = np.split(predicts[4], batch)
+      f_split = np.split(predicts[5], batch)
+      g_split = np.split(predicts[6], batch)
+      zip_split = zip(a_split, b_split, c_split, d_split, e_split, f_split, g_split)
+      zip_preds = []
+      for split in zip_split:
+          a_squeeze = np.squeeze(split[0], axis=0)
+          b_squeeze = np.squeeze(split[1], axis=0)
+          c_squeeze = np.squeeze(split[2], axis=0)
+          d_squeeze = np.squeeze(split[3], axis=0)
+          e_squeeze = np.squeeze(split[4], axis=0)
+          f_squeeze = np.squeeze(split[5], axis=0)
+          g_squeeze = np.squeeze(split[6], axis=0)
+          zip_preds.append((a_squeeze, b_squeeze, c_squeeze, d_squeeze, e_squeeze, f_squeeze, g_squeeze))
+      return zip_preds
 
     @staticmethod
     def get_backbone_output_shape(input_shape):

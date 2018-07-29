@@ -14,11 +14,15 @@ import tensorflow as tf
 
 from network.mask_rcnn import MaskRCNN, TrainTarget
 from network.subnetwork.faster_rcnn import rpn_input_data
-from data.coco_dataset import COCODataset, GenerateTarget
+from data.coco_dataset import COCODataset, GenerateTarget, COCOCategory
+from data.predict_dataset import PredictDataset
+from data.utils.data_utils import DataUtils
+from history_checkpoint_callback import HistoryCheckpoint
 
-INPUT_SHAPE = (1024, 1024, 3)
+
+INPUT_SHAPE = (512, 512, 3)
 #INPUT_SHAPE = (256, 256, 3)
-BATCH_SIZE = 4
+BATCH_SIZE = 10
 EPOCHS = 1000
 
 DIR_MODEL = '.'
@@ -79,17 +83,22 @@ def train(mode):
     model_filename_base = os.path.join(DIR_MODEL, FILE_MODEL)
     pre_step_surfix = ''
     step_surfix = ''
+    epochs = EPOCHS
     if mode == Train_Mode.STEP1:
         step_surfix = 'Step1'
+        epochs = 2500
     elif mode == Train_Mode.STEP2:
         pre_step_surfix = 'Step1'
         step_surfix = 'Step2'
+        epochs = 500
     elif mode == Train_Mode.STEP3:
         pre_step_surfix = 'Step2'
         step_surfix = 'Step3'
+        epochs = 2500
     elif mode == Train_Mode.STEP4:
         pre_step_surfix = 'Step3'
         step_surfix = 'Step4'
+        epochs = 4000
 
     if mode != Train_Mode.STEP1:
         model.load_weights(model_filename_base + '_' + pre_step_surfix + EXT_MODEL, by_name=True)
@@ -121,13 +130,18 @@ def train(mode):
                                                   , save_best_only=True
                                                   , period=20
                                                  )
+                , HistoryCheckpoint(filepath='LearningCurve' + '_{history}_' + step_surfix + '.png'
+                                   , verbose=1
+                                   , period=20
+                                   )
+                , keras.callbacks.CSVLogger('train_log_' + step_surfix + '.csv')
                 ]
     print('... created')
 
     print('fix ...')
     his = model.fit_generator(train_generator
                               , steps_per_epoch=math.ceil(train_data_num / BATCH_SIZE)
-                              , epochs=EPOCHS
+                              , epochs=epochs
                               , verbose=1
                               , use_multiprocessing=False # True
                               , callbacks=callbacks
@@ -137,7 +151,7 @@ def train(mode):
     print('model saveing ...')
     model.save_weights(model_filename)
     print('... saved')
-    saveLearningCurve(his, surfix=step_surfix)
+    #saveLearningCurve(his, surfix=step_surfix)
 
 
 def saveLearningCurve(history, surfix=None):
@@ -155,9 +169,61 @@ def saveLearningCurve(history, surfix=None):
 
 def predict():
     """ predict """
-    network = MaskRCNN(INPUT_SHAPE, 2, is_predict=True)
-    model = network.get_model()
-    model.load_weights(os.path.join(DIR_MODEL, FILE_MODEL), by_name=True)
+    backbone_shape = MaskRCNN.get_backbone_output_shape(INPUT_SHAPE)
+    anchors = rpn_input_data.get_anchors(INPUT_SHAPE, backbone_shape)
+    network = MaskRCNN(INPUT_SHAPE, 2
+                       , anchors=anchors, batch_size=BATCH_SIZE, mask_size=28, roi_pool_size=14
+                       , is_predict=True
+                      )
+    print('model compiling ...')
+    model = network.get_model_with_default_compile()
+    print('... compiled')
+    print('model weights loading ...')
+    model_filename_base = os.path.join(DIR_MODEL, FILE_MODEL)
+    pre_step_surfix = 'Step4'
+    model.load_weights(model_filename_base + '_' + pre_step_surfix + EXT_MODEL, by_name=True)
+    print('... loaded')
+
+    print('predict data create ...')
+    dataset = COCODataset(categories=['cat'], load_data=False)
+    pred_dataset = PredictDataset(INPUT_SHAPE[:2], with_resize=True)
+    print('... created')
+
+    print('predict ...')
+    input_names, inputs = pred_dataset.get_data_list()
+    dummy_count = BATCH_SIZE - (pred_dataset.data_size() % BATCH_SIZE)
+    input_names, inputs = input_names + input_names[:dummy_count], inputs + inputs[:dummy_count]
+    inputs = np.array(inputs)
+    preds = model.predict(inputs, BATCH_SIZE)
+    print('... predicted')
+    
+    print('outputs saveing ...')
+    zip_preds = network.zip_predict_by_batch(preds, len(inputs))
+    zip_data = zip(input_names, inputs, zip_preds)
+    for k, (name, img, pred) in enumerate(zip_data):
+        regs, scrs, lbls, msks, rois, _, _ = pred
+
+        lbls = np.squeeze(lbls, axis=1)
+        positive_ids = np.where(lbls > 0)
+        print('positive_ids : ', positive_ids)
+        #regs = regs[positive_ids]
+        #lbls = lbls[positive_ids]
+        #scrs = scrs[positive_ids]
+        #msks = msks[positive_ids]
+        #rois = rois[positive_ids]
+        lbl_names = []
+        for c in lbls:
+            ctg = dataset.get_category(dataset.class_index_to_category_id(c))
+            lbl_name = '%2d' % c
+            if isinstance(ctg, COCOCategory):
+                lbl_name = ctg.name
+            lbl_names.append(lbl_name)
+        data = DataUtils(img, lbl_names, regs, msks, scores=scrs, rois=rois)
+        save_path = os.path.join(pred_dataset.get_output_dir_name(), name)
+        print('%3d' % k, ' : ', save_path)
+        data.save(save_path)
+    print('... saved')
+
     print('execute predict')
 
 
@@ -168,12 +234,13 @@ def aaaaa(tag):
 
 
 if __name__ == '__main__':
-    aaaaa('Step 1')
-    train(Train_Mode.STEP1)
-    aaaaa('Step 2')
-    train(Train_Mode.STEP2)
-    aaaaa('Step 3')
-    train(Train_Mode.STEP3)
-    aaaaa('Step 4')
-    train(Train_Mode.STEP4)
-#    predict()
+#    aaaaa('Step 1')
+#    train(Train_Mode.STEP1)
+#    aaaaa('Step 2')
+#    train(Train_Mode.STEP2)
+#    aaaaa('Step 3')
+#    train(Train_Mode.STEP3)
+#    aaaaa('Step 4')
+#    train(Train_Mode.STEP4)
+    aaaaa('Preds ')
+    predict()
