@@ -22,7 +22,7 @@ from history_checkpoint_callback import HistoryCheckpoint
 
 INPUT_SHAPE = (256, 256, 3)
 #INPUT_SHAPE = (1024, 1024, 3)
-MASK_SIZE = 3
+MASK_SIZE = 6
 #MASK_SIZE = 28
 BATCH_SIZE = 10
 EPOCHS = 1000
@@ -73,7 +73,7 @@ def train(mode):
     backbone_shape = MaskRCNN.get_backbone_output_shape(INPUT_SHAPE)
     anchors = rpn_input_data.get_anchors(INPUT_SHAPE, backbone_shape)
     network = MaskRCNN(INPUT_SHAPE, 2
-                       , anchors=anchors, batch_size=BATCH_SIZE, mask_size=MASK_SIZE, roi_pool_size=14
+                       , anchors=anchors, batch_size=BATCH_SIZE, mask_size=MASK_SIZE
                        , is_predict=False, train_targets= train_targets
                       )
     print('model compiling ...')
@@ -175,7 +175,7 @@ def predict():
     print('@@@ [main] backbone_shape : ', backbone_shape)
     anchors = rpn_input_data.get_anchors(INPUT_SHAPE, backbone_shape)
     network = MaskRCNN(INPUT_SHAPE, 2
-                       , anchors=anchors, batch_size=BATCH_SIZE, mask_size=MASK_SIZE, roi_pool_size=14
+                       , anchors=anchors, batch_size=BATCH_SIZE, mask_size=MASK_SIZE
                        , is_predict=True
                       )
     print('model compiling ...')
@@ -238,13 +238,13 @@ def aaaaa(tag):
 
 
 if __name__ == '__main__':
-#    aaaaa('Step 1')
-#    train(Train_Mode.STEP1)
-#    aaaaa('Step 2')
-#    train(Train_Mode.STEP2)
-#    aaaaa('Step 3')
-#    train(Train_Mode.STEP3)
-#    aaaaa('Step 4')
-#    train(Train_Mode.STEP4)
+    aaaaa('Step 1')
+    train(Train_Mode.STEP1)
+    aaaaa('Step 2')
+    train(Train_Mode.STEP2)
+    aaaaa('Step 3')
+    train(Train_Mode.STEP3)
+    aaaaa('Step 4')
+    train(Train_Mode.STEP4)
     aaaaa('Preds ')
-    predict()
+#    predict()
