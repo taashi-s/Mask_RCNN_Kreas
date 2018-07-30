@@ -51,7 +51,10 @@ class DataUtils():
             color = (col[k], col[::-1][k], 0)
             reg_lt = (reg[1], reg[0])
             reg_rb = (reg[3], reg[2])
-            if (reg[0] < 0 or img_h < reg[0]) or (reg[2] < 0 or img_h < reg[2]) or (reg[1] < 0 or img_w < reg[1]) or (reg[3] < 0 or img_w < reg[3]):
+            if ((reg[0] < 0 or img_h < reg[0])
+                 or (reg[2] < 0 or img_h < reg[2])
+                 or (reg[1] < 0 or img_w < reg[1])
+                 or (reg[3] < 0 or img_w < reg[3])):
                   continue
 
             caption = 'class(' + cla + ')'

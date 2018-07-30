@@ -81,6 +81,7 @@ class COCODataset():
         else:
             self.__ctg_ids = self.__coco.getCatIds(catNms=categories)
         self.__categories = []
+        self.__categories.append(COCOCategory(0, 'background'))
         for cid in self.__ctg_ids:
             self.__categories.append(COCOCategory(cid, self.__coco.loadCats(cid)[0]["name"]))
 
