@@ -89,19 +89,19 @@ def train(mode):
     epochs = EPOCHS
     if mode == Train_Mode.STEP1:
         step_surfix = 'Step1'
-        epochs = 2 # 3500
+        epochs = 3500
     elif mode == Train_Mode.STEP2:
         pre_step_surfix = 'Step1'
         step_surfix = 'Step2'
-        epochs = 2 # 1000
+        epochs = 1000
     elif mode == Train_Mode.STEP3:
         pre_step_surfix = 'Step2'
         step_surfix = 'Step3'
-        epochs = 2 # 3500
+        epochs = 3500
     elif mode == Train_Mode.STEP4:
         pre_step_surfix = 'Step3'
         step_surfix = 'Step4'
-        epochs = 2 # 4000
+        epochs = 4000
 
     if mode != Train_Mode.STEP1:
         model.load_weights(model_filename_base + '_' + pre_step_surfix + EXT_MODEL, by_name=True)
