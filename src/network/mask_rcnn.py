@@ -26,7 +26,7 @@ class MaskRCNN():
     """
 
     def __init__(self, input_shape, class_num, anchors=None
-                 , batch_size=5, mask_size=28, roi_pool_size=14
+                 , batch_size=5, mask_size=28, roi_pool_size=None
                  , is_predict=False, train_targets=None):
         self.__input_shape = input_shape
         if train_targets is None:
@@ -61,6 +61,7 @@ class MaskRCNN():
             clsses, offsets = faster_rcnn.head_net(backbone, dtrm_regions, class_num
                                                    , trainable=train_head, batch_size=batch_size)
             masks = self.__mask_net(backbone, dtrm_regions, class_num
+                                    , mask_size=mask_size, roi_pool_size=roi_pool_size
                                     , trainable=train_head, batch_size=batch_size)
 
             cls_losses = ClassLoss()([dtrm_cls_labels, clsses])
@@ -96,11 +97,14 @@ class MaskRCNN():
             self.__model.add_loss(tf.reduce_mean(dummy_loss))
 
 
-    def __mask_net(self, fmaps, regions, class_num, batch_size=5, roi_pool_size=14
+    def __mask_net(self, fmaps, regions, class_num, batch_size=5, roi_pool_size=None
                    , trainable=True, mask_size=28):
         """
         for backbone is ResNet/FPN
         """
+        mask_h, mask_w = KCUtils.normalize_tuple(mask_size, 2, 'mask_size')
+        if roi_pool_size is None:
+            roi_pool_size = (mask_h // 2, mask_w // 2)
         roi_pool = RoIPooling(batch_size=batch_size, pooling=roi_pool_size
                               , image_shape=self.__input_shape
                               , name='poi_pooling_mask'
@@ -109,18 +113,18 @@ class MaskRCNN():
         conv_layers = roi_pool
         for _ in range(4):
             #conv_layers = TimeDistributed(Conv2D(256, 3, padding='same'
-            conv_layers = TimeDistributed(Conv2D(128, 3, padding='same'
+            conv_layers = TimeDistributed(Conv2D(256, 3, padding='same'
                                                  , trainable=trainable))(conv_layers)
             conv_layers = TimeDistributed(BatchNormalization())(conv_layers)
             conv_layers = TimeDistributed(Activation('relu'))(conv_layers)
 
         #deconv = TimeDistributed(Conv2DTranspose(256, 2, strides=2, activation='relu'
-        deconv = TimeDistributed(Conv2DTranspose(128, 2, strides=2, activation='relu'
+        deconv = TimeDistributed(Conv2DTranspose(256, 2, strides=2, activation='relu'
                                                  , trainable=trainable))(conv_layers)
+
         fc_conv = TimeDistributed(Conv2D(class_num, 1, activation='sigmoid'
                                          , trainable=trainable))(deconv)
 
-        mask_h, mask_w = KCUtils.normalize_tuple(mask_size, 2, 'mask_size')
         masks = Reshape((-1, class_num, mask_h, mask_w))(fc_conv)
         return masks
 
