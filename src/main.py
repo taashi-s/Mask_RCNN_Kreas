@@ -22,8 +22,10 @@ from history_checkpoint_callback import HistoryCheckpoint
 
 INPUT_SHAPE = (512, 512, 3)
 #INPUT_SHAPE = (256, 256, 3)
-BATCH_SIZE = 10
-EPOCHS = 1000
+BATCH_SIZE = 20
+EPOCHS = 2
+CATEGORIES = ['cat', 'dog', 'sheep', 'zebra', 'cow']
+
 
 DIR_MODEL = '.'
 FILE_MODEL = 'MaskRCNN_Model'
@@ -70,7 +72,7 @@ def train(mode):
 
     backbone_shape = MaskRCNN.get_backbone_output_shape(INPUT_SHAPE)
     anchors = rpn_input_data.get_anchors(INPUT_SHAPE, backbone_shape)
-    network = MaskRCNN(INPUT_SHAPE, 2
+    network = MaskRCNN(INPUT_SHAPE, len(CATEGORIES) + 1
                        , anchors=anchors, batch_size=BATCH_SIZE, mask_size=28, roi_pool_size=14
                        , is_predict=False, train_targets= train_targets
                       )
@@ -86,15 +88,15 @@ def train(mode):
     epochs = EPOCHS
     if mode == Train_Mode.STEP1:
         step_surfix = 'Step1'
-        epochs = 2500
+        epochs = 3500
     elif mode == Train_Mode.STEP2:
         pre_step_surfix = 'Step1'
         step_surfix = 'Step2'
-        epochs = 500
+        epochs = 1000
     elif mode == Train_Mode.STEP3:
         pre_step_surfix = 'Step2'
         step_surfix = 'Step3'
-        epochs = 2500
+        epochs = 3500
     elif mode == Train_Mode.STEP4:
         pre_step_surfix = 'Step3'
         step_surfix = 'Step4'
@@ -105,10 +107,11 @@ def train(mode):
     model_filename = model_filename_base + '_' + step_surfix + EXT_MODEL
 
     print('dataset create ...')
-    dataset = COCODataset(categories=['cat'])
+    dataset = COCODataset(categories=CATEGORIES)
     data_num = dataset.data_size()
     train_data_num = math.floor(data_num * 0.8)
     valid_data_num = data_num - train_data_num
+    dataset.shuffle_data()
     basedata = dataset.get_data_list()
     basedata_train = basedata[:train_data_num]
     basedata_valid = basedata[train_data_num:]
@@ -171,7 +174,7 @@ def predict():
     """ predict """
     backbone_shape = MaskRCNN.get_backbone_output_shape(INPUT_SHAPE)
     anchors = rpn_input_data.get_anchors(INPUT_SHAPE, backbone_shape)
-    network = MaskRCNN(INPUT_SHAPE, 2
+    network = MaskRCNN(INPUT_SHAPE, len(CATEGORIES) + 1
                        , anchors=anchors, batch_size=BATCH_SIZE, mask_size=28, roi_pool_size=14
                        , is_predict=True
                       )
@@ -185,7 +188,7 @@ def predict():
     print('... loaded')
 
     print('predict data create ...')
-    dataset = COCODataset(categories=['cat'], load_data=False)
+    dataset = COCODataset(categories=CATEGORIES, load_data=False)
     pred_dataset = PredictDataset(INPUT_SHAPE[:2], with_resize=True)
     print('... created')
 
@@ -234,13 +237,13 @@ def aaaaa(tag):
 
 
 if __name__ == '__main__':
-#    aaaaa('Step 1')
-#    train(Train_Mode.STEP1)
-#    aaaaa('Step 2')
-#    train(Train_Mode.STEP2)
-#    aaaaa('Step 3')
-#    train(Train_Mode.STEP3)
-#    aaaaa('Step 4')
-#    train(Train_Mode.STEP4)
-    aaaaa('Preds ')
-    predict()
+    aaaaa('Step 1')
+    train(Train_Mode.STEP1)
+    aaaaa('Step 2')
+    train(Train_Mode.STEP2)
+    aaaaa('Step 3')
+    train(Train_Mode.STEP3)
+    aaaaa('Step 4')
+    train(Train_Mode.STEP4)
+    #aaaaa('Preds ')
+    #predict()

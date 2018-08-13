@@ -4,14 +4,14 @@ Detection Target Region Mask Layer Module
 """
 
 import tensorflow as tf
-import keras.engine.base_layer as KELayer
+from keras.layers.core import Lambda
 import keras.backend as KB
 import keras.utils.conv_utils as KCUtils
 
 from utils.regions_utils import RegionsUtils
 
 
-class DetectionTargetRegionMask(KELayer.Layer):
+class DetectionTargetRegionMask():
     """
     TODO : Write description
     Detection Target Region Mask Layer class
@@ -19,7 +19,7 @@ class DetectionTargetRegionMask(KELayer.Layer):
 
     def __init__(self, positive_threshold=0.5, positive_ratio=0.33, image_shape=None
                  , batch_size=5, exclusion_threshold=0.1, count_per_batch=64
-                 , mask_size=28, **kwargs):
+                 , mask_size=28, name='detection_target_region_mask', **kwargs):
         super(DetectionTargetRegionMask, self).__init__(**kwargs)
         self.__th = positive_threshold
         self.__excl_th = exclusion_threshold
@@ -30,9 +30,13 @@ class DetectionTargetRegionMask(KELayer.Layer):
         (mask_h, mask_w) = KCUtils.normalize_tuple(mask_size, 2, 'mask_size')
         self.__mask_size_h = mask_h
         self.__mask_size_w = mask_w
+        self.__layer = Lambda(lambda inputs: self.__detection_target_region_mask(*inputs)
+                              , output_shape=self.__output_shape
+                              , name=name)
 
-    def call(self, inputs, **kwargs):
-        return self.__detection_target_region_mask(*inputs)
+
+    def __call__(self, inputs):
+        return self.__layer(inputs)
 
     def __detection_target_region_mask(self, cls_labels, reg_labels, msk_labels, regions):
         norm_reg_labels = reg_labels
@@ -154,7 +158,7 @@ class DetectionTargetRegionMask(KELayer.Layer):
         return padding_regs, padding_ofss, padding_clss, padding_msks
 
 
-    def compute_output_shape(self, input_shape):
+    def __output_shape(self, input_shape):
         return [(None, self.__count_per_batch, 1)
                 , (None, self.__count_per_batch, 4)
                 , (None, self.__count_per_batch, self.__mask_size_h, self.__mask_size_w)

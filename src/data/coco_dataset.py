@@ -68,6 +68,7 @@ class COCODataset():
         self.__data_list = []
         if load_data:
             self.load_data()
+            print('### COCODataset load data : ', self.data_size())
 
 
     def __get_annotaion_filename(self):
@@ -143,6 +144,13 @@ class COCODataset():
         data_size
         """
         return len(self.__data_list)
+
+
+    def shuffle_data(self):
+        """
+        shuffle_data
+        """
+        return random.shuffle(self.__data_list)
 
 
     def get_coco(self):
@@ -267,6 +275,15 @@ class COCODataset():
         if clss_tmp == []:
             return error_return
 
+        if len(clss_tmp) > max_objects:
+            clss_tmp = clss_tmp[:max_objects]
+
+        if len(regs_tmp) > max_objects:
+            regs_tmp = regs_tmp[:max_objects]
+
+        if len(msks_tmp) > max_objects:
+            msks_tmp = msks_tmp[:max_objects]
+
         ofs_label, cls_label = None, None
         if include_rpn_inputs:
             ofs_label, cls_label = rpn_data.make_inputs(anchors, np.array(regs_tmp), height, width)
@@ -279,7 +296,7 @@ class COCODataset():
 
             clss[:len(clss_tmp)] = clss_tmp
             regs[:len(regs_tmp), :] = regs_tmp
-            msks[:len(msks_tmp), :] = msks_tmp
+            msks[:len(msks_tmp), :, :] = msks_tmp
 
             clss = np.expand_dims(clss, axis=1)
 
